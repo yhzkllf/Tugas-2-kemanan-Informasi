@@ -1,43 +1,43 @@
 import socket
-from algoritmaDES import DES
+from algoritmaDES import encryption, str_to_bin, binary_to_ascii
 
-algoritma = DES()
-key = "gasin"
-print(f"Key: {key}")
-key_bin = algoritma.ascii_to_bin(key)
-rkb, rk = algoritma.generate_keys(key_bin)
-rkb_rev = rkb[::-1]
-rk_rev = rk[::-1]
+def chunk_message(message, chunk_size=8):
+    return [message[i:i+chunk_size] for i in range(0, len(message), chunk_size)]
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(('localhost', 1234))
-server_socket.listen(5)
+def server_program():
+    host = 'localhost'
+    port = 5000
 
-print("Server started and waiting for a connection...")
-client_socket, addr = server_socket.accept()
-print(f"Connection established with {addr}")
+    server_socket = socket.socket()
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+    print("Server is listening...")
 
-try:
+    conn, address = server_socket.accept()
+    print(f"Connection from: {address}")
+
     while True:
-
-        msg = client_socket.recv(1024).decode("utf-8")
-        if msg.lower() == 'quit':
-            print("Client ended the connection.")
+        # Get message from user
+        message = input("Enter message to encrypt (or 'quit' to exit): ")
+        if message.lower() == 'quit':
+            conn.send('quit'.encode())
             break
-        else:
-            decrypted_msg = algoritma.bin_to_ascii(algoritma.decrypt(msg, rkb_rev, rk_rev))
-            print("B:", decrypted_msg)
-        
-        # Get and encrypt response message
-        res = input("A: ")
-        res_bin = algoritma.ascii_to_bin(res)
-        encrypted_res = algoritma.encrypt(res_bin, rkb, rk)
-        
-        # Send the encrypted response
-        client_socket.send(encrypted_res.encode("utf-8"))
 
-except (KeyboardInterrupt, EOFError):
-    print("\nConnection closed by server.")
-finally:
-    client_socket.close()
+        # Split message into 8-character chunks and encrypt each chunk
+        chunks = chunk_message(message)
+        encrypted_message = ''
+        
+        for chunk in chunks:
+            # Encrypt each chunk
+            encrypted_chunk = encryption(chunk)
+            encrypted_message += encrypted_chunk
+
+        # Send encrypted message
+        conn.send(encrypted_message.encode())
+        print(f"Encrypted message sent: {encrypted_message}")
+
+    conn.close()
     server_socket.close()
+
+if __name__ == '__main__':
+    server_program()
