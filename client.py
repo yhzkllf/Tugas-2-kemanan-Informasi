@@ -1,38 +1,39 @@
 import socket
-from algoritmaDES import DES
+from algoritmaDES import decryption, str_to_bin
 
+def chunk_message(message, chunk_size=8):
+    return [message[i:i+chunk_size] for i in range(0, len(message), chunk_size)]
 
-algoritma = DES()
-key = "gasin"
-print(f"Key: {key}")
-key_bin = algoritma.ascii_to_bin(key)
-rkb, rk = algoritma.generate_keys(key_bin)
-rkb_rev = rkb[::-1]
-rk_rev = rk[::-1]
+def client_program():
+    host = 'localhost'
+    port = 5000
 
+    client_socket = socket.socket()
+    client_socket.connect((host, port))
+    print("Connected to server")
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect(('localhost', 1234))
-print("Connected to the server.")
-
-try:
     while True:
-        msg = input("B: ")
+        # Receive encrypted message
+        encrypted_message = client_socket.recv(1024).decode()
         
-        msg_bin = algoritma.ascii_to_bin(msg)
-        encrypted_msg = algoritma.encrypt(msg_bin, rkb, rk)
-        
-        client_socket.send(encrypted_msg.encode("utf-8"))
-        
-        encrypted_res = client_socket.recv(1024).decode("utf-8")
-        if encrypted_res.lower() == 'quit':
-            print("Server ended the connection.")
+        if encrypted_message == 'quit':
             break
-        else:
-            decrypted_res = algoritma.bin_to_ascii(algoritma.decrypt(encrypted_res, rkb_rev, rk_rev))
-            print("A:", decrypted_res)
 
-except (KeyboardInterrupt, EOFError):
-    print("\nConnection closed by user.")
-finally:
+        print(f"\nReceived encrypted message: {encrypted_message}")
+
+        # Split encrypted message into chunks and decrypt
+        chunks = chunk_message(encrypted_message)
+        decrypted_message = ''
+
+        for chunk in chunks:
+            # Convert chunk to binary and decrypt
+            chunk_binary = str_to_bin(chunk)
+            decrypted_chunk = decryption(chunk_binary)
+            decrypted_message += decrypted_chunk
+
+        print(f"Decrypted message: {decrypted_message}")
+
     client_socket.close()
+
+if __name__ == '__main__':
+    client_program()
